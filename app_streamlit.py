@@ -461,8 +461,36 @@ if not (webrtc_ctx and webrtc_ctx.state.playing and webrtc_ctx.video_processor):
         "last_result": "", "is_final": False, "history_tail": []
     })
 else:
-    # Periodically pull stats from the processor
-    state = webrtc_ctx.video_processor.get_state()
+    # Safely check if video processor exists and has a get_state method
+    vp = getattr(webrtc_ctx, "video_processor", None)
+
+    if vp is not None and hasattr(vp, "get_state"):
+        try:
+            state = vp.get_state()
+        except Exception as e:
+            # Fallback if something goes wrong
+            state = {
+                "round": 1,
+                "total_rounds": st.session_state.get("rounds", 3),
+                "player_score": 0,
+                "computer_score": 0,
+                "last_result": f"Error: {e}",
+                "is_final": False,
+                "history_tail": []
+            }
+    else:
+        # Safe defaults while waiting for processor
+        state = {
+            "round": 1,
+            "total_rounds": st.session_state.get("rounds", 3),
+            "player_score": 0,
+            "computer_score": 0,
+            "last_result": "",
+            "is_final": False,
+            "history_tail": []
+        }
+
     render_stats(state)
+
     # Tiny autorefresh to keep right panel live while video runs
     st.experimental_rerun()
